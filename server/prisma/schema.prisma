@@ -1,0 +1,179 @@
+// Prisma schema file for OpenSourceOnboard
+// Datasource: PostgreSQL
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ContributionStatus {
+  SAVED
+  STARTED
+  IN_PROGRESS
+  TESTING
+  PR_CREATED
+  COMPLETED
+}
+
+model User {
+  id           String            @id @default(uuid())
+  email        String            @unique
+  name         String
+  passwordHash String
+  role         Role              @default(USER)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  profile       DeveloperProfile?
+  skills        UserSkill[]
+  interests     UserInterest[]
+  savedIssues   SavedIssue[]
+  contributions Contribution[]
+
+  @@map("users")
+}
+
+model DeveloperProfile {
+  id              String          @id @default(uuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experienceLevel ExperienceLevel @default(BEGINNER)
+  githubUsername  String?
+  bio             String?
+  weeklyHours     Int             @default(5)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("developer_profiles")
+}
+
+model UserSkill {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillName String
+  level     String   @default("Beginner") // Beginner, Intermediate, Proficient
+  createdAt DateTime @default(now())
+
+  @@unique([userId, skillName])
+  @@map("user_skills")
+}
+
+model UserInterest {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interestName String
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, interestName])
+  @@map("user_interests")
+}
+
+model Repository {
+  id           String   @id @default(uuid())
+  githubRepoId Int      @unique
+  fullName     String   @unique // e.g. "facebook/react"
+  description  String?
+  stars        Int      @default(0)
+  language     String?
+  htmlUrl      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  issues       Issue[]
+
+  @@map("repositories")
+}
+
+model Issue {
+  id            String       @id @default(uuid())
+  repositoryId  String
+  repository    Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  githubIssueId Int          @unique
+  number        Int
+  title         String
+  body          String?
+  htmlUrl       String
+  state         String       @default("open")
+  labels        String[]     // Postgres array
+  commentsCount Int          @default(0)
+  difficulty    String       @default("Good First Issue")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  skills        IssueSkill[]
+  savedBy       SavedIssue[]
+  contributions Contribution[]
+
+  @@map("issues")
+}
+
+model IssueSkill {
+  id        String @id @default(uuid())
+  issueId   String
+  issue     Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  skillName String
+
+  @@unique([issueId, skillName])
+  @@map("issue_skills")
+}
+
+model SavedIssue {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  notes     String?
+  savedAt   DateTime @default(now())
+
+  @@unique([userId, issueId])
+  @@map("saved_issues")
+}
+
+model Contribution {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issueId     String
+  issue       Issue              @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  status      ContributionStatus @default(STARTED)
+  startedAt   DateTime           @default(now())
+  completedAt DateTime?
+  prUrl       String?
+  notes       String?
+
+  checklistItems ContributionChecklistItem[]
+
+  @@unique([userId, issueId])
+  @@map("contributions")
+}
+
+model ContributionChecklistItem {
+  id             String       @id @default(uuid())
+  contributionId String
+  contribution   Contribution @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+  stepIndex      Int          // 1 to 12
+  title          String
+  completed      Boolean      @default(false)
+  completedAt    DateTime?
+
+  @@unique([contributionId, stepIndex])
+  @@map("contribution_checklist_items")
+}

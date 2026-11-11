@@ -1,0 +1,6 @@
+{
+  "name": "OpenSourceOnboard",
+  "description": "An AI-Integrated Full-Stack Platform for Open-Source Contribution Onboarding and GitHub Issue Recommendation",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
